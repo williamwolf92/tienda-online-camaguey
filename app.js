@@ -3,6 +3,11 @@
 /* Cart is persisted to localStorage. The in-memory 'cart' is an array of
    { item: {name, priceValue, priceDisplay, image}, qty } objects. */
 
+/* ── WhatsApp ──────────────────────────────────────────────────────────
+   Número de destino en formato internacional, sin '+' ni espacios.
+   Ejemplo: '34612345678' para España, '5491112345678' para Argentina.  */
+const WHATSAPP_NUMBER = '5351110757';
+
 const CART_STORAGE_KEY = 'mi_app_carrito_v1';
 const cart = [];
 
@@ -585,39 +590,57 @@ if (pedidoForm) {
   updateAddressState();
   validateFormInputs();
 
-  pedidoForm.addEventListener('submit', async (e) => {
+  pedidoForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (submitBtn && submitBtn.disabled) return;
 
-    openConfirmModal(async () => {
-      const originalBtnText = submitBtn ? submitBtn.textContent : 'Enviar pedido';
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
-      }
+    openConfirmModal(() => {
+      /* Recopilar datos del formulario */
+      const nombre    = inputName  ? inputName.value.trim()  : '';
+      const telefono  = inputPhone ? inputPhone.value.trim() : '';
+      const pin       = inputPin   ? inputPin.value.trim()   : '';
+      const entrega   = deliveryRadios.find(r => r.checked)?.value || '';
+      const direccion = (entrega === 'Domicilio' && inputAddress) ? inputAddress.value.trim() : '';
+      /* Normalizar saltos de línea del textarea (evita \r\n en Windows) */
+      const productos = formItems    ? formItems.value.replace(/\r\n|\r/g, '\n') : '';
+      const total     = formTotal    ? formTotal.value    : '';
+      const datetime  = formDatetime ? formDatetime.value : '';
 
-      try {
-        const res = await fetch(pedidoForm.action, { method: 'POST', body: new FormData(pedidoForm) });
-        if (!res.ok) throw new Error('Respuesta no OK');
+      /* Construir texto del mensaje */
+      const lineas = [
+        '\u{1F6D2} *NUEVO PEDIDO*',
+        '',
+        `\u{1F464} Nombre: ${nombre}`,
+        `\u{1F4DE} Telefono: ${telefono}`,
+        `\u{1F511} PIN: ${pin}`,
+        `\u{1F69A} Entrega: ${entrega}`,
+      ];
+      if (direccion) lineas.push(`\u{1F4CD} Direccion: ${direccion}`);
+      lineas.push('');
+      lineas.push('\u{1F4E6} *Productos:*');
+      lineas.push(productos.trim());
+      lineas.push('');
+      lineas.push(`\u{1F4B0} *Total: ${total}*`);
+      lineas.push(`\u{1F4C5} ${datetime}`);
 
-        showStatus('Orden enviada con éxito.', false);
-        closeOrderModal();
-        pedidoForm.reset();
-        formItems.value = '';
-        formTotal.value = formatCurrency(0);
-        cart.length = 0;
-        renderCart();
-        saveCartToStorage();
-      } catch (err) {
-        showStatus('Error de envío, revise su conexión e intente de nuevo.', true);
-      } finally {
-        setTimeout(() => {
-          if (submitBtn) {
-            submitBtn.textContent = originalBtnText;
-            validateFormInputs();
-          }
-        }, 600);
-      }
+      /* Unir con salto de línea y codificar para URL */
+      const mensaje = lineas.join('\n');
+      const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`;
+
+      /* Vaciar carrito y persistir antes de navegar */
+      pedidoForm.reset();
+      formItems.value = '';
+      formTotal.value = formatCurrency(0);
+      cart.length = 0;
+      renderCart();
+      saveCartToStorage();
+      closeOrderModal();
+
+      /* Navegar al enlace de WhatsApp.
+         Se usa location.href en lugar de window.open para evitar que el
+         bloqueador de ventanas emergentes rechace la llamada cuando viene
+         desde dentro de un setTimeout (como el del modal de confirmación). */
+      window.location.href = url;
     });
   });
 }
