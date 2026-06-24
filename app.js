@@ -509,7 +509,7 @@ function openConfirmModal(onConfirm) {
     confirmNoBtn.removeEventListener('click', handleNo);
   }
 
-  function handleYes() { cleanup(); closeConfirmModal(() => onConfirm()); }
+  function handleYes() { cleanup(); onConfirm(); closeConfirmModal(); }
   function handleNo()  { cleanup(); closeConfirmModal(); }
 
   confirmYesBtn.addEventListener('click', handleYes);
@@ -527,26 +527,6 @@ function closeConfirmModal(callback) {
 }
 
 const pedidoForm   = document.getElementById('pedidoForm');
-const statusModal  = document.getElementById('status-modal');
-const statusText   = document.getElementById('status-text');
-let statusTimeoutId = null;
-
-function showStatus(message, isError) {
-  if (!statusModal || !statusText) return;
-  if (statusTimeoutId) clearTimeout(statusTimeoutId);
-  statusModal.classList.remove('status-hidden', 'status-exiting', 'status-success', 'status-error');
-  statusText.textContent = message;
-  statusModal.classList.add(isError ? 'status-error' : 'status-success');
-  statusModal.setAttribute('aria-hidden', 'false');
-  statusTimeoutId = setTimeout(() => {
-    statusModal.classList.add('status-exiting');
-    setTimeout(() => {
-      statusModal.classList.add('status-hidden');
-      statusModal.classList.remove('status-exiting');
-      statusModal.setAttribute('aria-hidden', 'true');
-    }, 200);
-  }, 3000);
-}
 
 if (pedidoForm) {
   const submitBtn      = pedidoForm.querySelector('button[type="submit"]');
@@ -637,9 +617,8 @@ if (pedidoForm) {
       closeOrderModal();
 
       /* Navegar al enlace de WhatsApp.
-         Se usa location.href en lugar de window.open para evitar que el
-         bloqueador de ventanas emergentes rechace la llamada cuando viene
-         desde dentro de un setTimeout (como el del modal de confirmación). */
+         Se llama directamente desde el handler del click (sin setTimeout)
+         para garantizar que los navegadores móviles permitan la apertura. */
       window.location.href = url;
     });
   });
