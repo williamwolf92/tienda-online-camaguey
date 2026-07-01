@@ -8,6 +8,11 @@
    Ejemplo: '34612345678' para España, '5491112345678' para Argentina.  */
 const WHATSAPP_NUMBER = '5351110757';
 
+/* ── Web3Forms ─────────────────────────────────────────────────────────
+   Endpoint de envío por correo. El access_key ya viaja como input oculto
+   dentro del formulario (#pedidoForm). */
+const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
+
 const CART_STORAGE_KEY = 'mi_app_carrito_v1';
 const cart = [];
 
@@ -526,6 +531,21 @@ function closeConfirmModal(callback) {
   }, 180);
 }
 
+/* ── Toast de error ────────────────────────────────────────────────── */
+const toastEl        = document.getElementById('toast');
+const toastMessageEl = document.getElementById('toast-message');
+let toastTimeoutId   = null;
+
+function showToast(message, duration = 4000) {
+  if (!toastEl || !toastMessageEl) return;
+  toastMessageEl.textContent = message;
+  toastEl.classList.remove('toast-hidden');
+  if (toastTimeoutId) clearTimeout(toastTimeoutId);
+  toastTimeoutId = setTimeout(() => {
+    toastEl.classList.add('toast-hidden');
+  }, duration);
+}
+
 const pedidoForm   = document.getElementById('pedidoForm');
 
 if (pedidoForm) {
@@ -574,7 +594,7 @@ if (pedidoForm) {
     e.preventDefault();
     if (submitBtn && submitBtn.disabled) return;
 
-    openConfirmModal(() => {
+    openConfirmModal(async () => {
       /* Recopilar datos del formulario */
       const nombre    = inputName  ? inputName.value.trim()  : '';
       const telefono  = inputPhone ? inputPhone.value.trim() : '';
@@ -591,7 +611,7 @@ if (pedidoForm) {
         '\u{1F6D2} *NUEVO PEDIDO*',
         '',
         `\u{1F464} Nombre: ${nombre}`,
-        `\u{1F4DE} Telefono: ${telefono}`,
+        `\u{1F4F1} Telefono: ${telefono}`,
         `\u{1F511} PIN: ${pin}`,
         `\u{1F69A} Entrega: ${entrega}`,
       ];
@@ -607,19 +627,63 @@ if (pedidoForm) {
       const mensaje = lineas.join('\n');
       const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`;
 
-      /* Vaciar carrito y persistir antes de navegar */
-      pedidoForm.reset();
-      formItems.value = '';
-      formTotal.value = formatCurrency(0);
-      cart.length = 0;
-      renderCart();
-      saveCartToStorage();
-      closeOrderModal();
+      /* Estado "enviando" en el botón mientras se contacta con Web3Forms */
+      const originalBtnText = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+      }
 
-      /* Navegar al enlace de WhatsApp.
-         Se llama directamente desde el handler del click (sin setTimeout)
-         para garantizar que los navegadores móviles permitan la apertura. */
-      window.location.href = url;
+      try {
+        /* Enviar el pedido por correo a través de Web3Forms.
+           Se envía únicamente el mensaje ya compilado (el mismo texto que
+           recibe WhatsApp), sin los campos individuales del formulario,
+           para que el correo llegue limpio y legible. */
+        const accessKey = pedidoForm.querySelector('input[name="access_key"]')?.value || '';
+        const subject   = pedidoForm.querySelector('input[name="subject"]')?.value   || '';
+        const fromName  = pedidoForm.querySelector('input[name="from_name"]')?.value || '';
+
+        const formData = new FormData();
+        formData.append('access_key', accessKey);
+        formData.append('subject', subject);
+        formData.append('from_name', fromName);
+        formData.append('message', mensaje);
+
+        const response = await fetch(WEB3FORMS_ENDPOINT, {
+          method: 'POST',
+          body: formData,
+          headers: { Accept: 'application/json' },
+        });
+
+        let data = null;
+        try { data = await response.json(); } catch (_) { /* respuesta no-JSON */ }
+
+        if (!response.ok || !data || data.success !== true) {
+          throw new Error((data && data.message) || 'Fallo en el envío del correo');
+        }
+
+        /* Envío correcto: vaciar carrito, persistir y abrir WhatsApp.
+           No se muestra la pantalla de éxito de Web3Forms porque nunca
+           se navega a su endpoint; todo ocurre vía fetch en segundo plano. */
+        pedidoForm.reset();
+        formItems.value = '';
+        formTotal.value = formatCurrency(0);
+        cart.length = 0;
+        renderCart();
+        saveCartToStorage();
+        closeOrderModal();
+
+        window.location.href = url;
+      } catch (err) {
+        /* Error de envío: no se abre WhatsApp, se muestra un toast y se
+           deja el formulario intacto para que el usuario pueda reintentar. */
+        showToast('No se pudo enviar el pedido. Por favor, inténtalo de nuevo.');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalBtnText;
+        }
+      }
     });
   });
 }
