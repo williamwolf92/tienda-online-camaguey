@@ -38,12 +38,6 @@ body {
   box-shadow: 0 5px 18px rgba(0,0,0,0.5);
   z-index: 100;
 }
-#app-header .header-title {
-  font-weight: 700;
-  color: var(--accent);
-  font-size: 18px;
-}
-
 #cart-toggle {
   position: relative;
   width: 44px;
@@ -79,6 +73,26 @@ body {
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+/* Search bar (dentro del header) */
+#search-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 14px;
+  min-width: 0;
+}
+#search-input::placeholder {
+  color: #888;
+}
+#search-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 /* Sidebar cart */

@@ -205,6 +205,46 @@ async function loadAndRenderProducts() {
 
 loadAndRenderProducts();
 
+/* --- Barra de búsqueda: filtra las tarjetas de productos en tiempo real --- */
+const searchInput = document.getElementById('search-input');
+const searchMenuContainer = document.getElementById('menu-container');
+let noResultsEl = null;
+
+function normalizeText(str) {
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function filterProducts(query) {
+  if (!searchMenuContainer) return;
+  const q = normalizeText(query.trim());
+  const cards = searchMenuContainer.querySelectorAll('.product-card');
+  let visibleCount = 0;
+
+  cards.forEach((card) => {
+    const nameEl = card.querySelector('.product-card-name');
+    const name = nameEl ? normalizeText(nameEl.textContent) : '';
+    const matches = q === '' || name.includes(q);
+    card.style.display = matches ? '' : 'none';
+    if (matches) visibleCount++;
+  });
+
+  if (!noResultsEl) {
+    noResultsEl = document.createElement('p');
+    noResultsEl.id = 'search-no-results';
+    noResultsEl.className = 'load-error';
+    noResultsEl.textContent = 'No se encontraron productos.';
+    searchMenuContainer.insertAdjacentElement('afterend', noResultsEl);
+  }
+  noResultsEl.style.display = (cards.length > 0 && visibleCount === 0) ? 'block' : 'none';
+}
+
+if (searchInput) {
+  searchInput.addEventListener('input', () => filterProducts(searchInput.value));
+}
+
 /* --- Sidebar cart rendering and controls --- */
 const cartSidebar   = document.getElementById('cart-sidebar');
 const cartToggle    = document.getElementById('cart-toggle');
