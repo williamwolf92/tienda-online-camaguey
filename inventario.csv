@@ -1,13 +1,13 @@
-producto,precio,disponibilidad,foto
-Mayonesa Casera Vima (255ml),1,si,mayonesavima.jpg
-Papitas Pringles Original,10,si,pringleoriginal.jpg
-Refresco Brio Naranja,10,si,brionaranja.png
-Refresco Brio Cola,10,si,briocola.png
-Cerveza Calatrava,10,si,cerv-calatrava.webp
-Cerveza Unlaguer,10,si,cerv-unlaguer.png
-Galletas Oreo (pqt. 6 galletas),10,si,galletaoreo.jpg
-Pasta de Tomate Vima (400g),10,si,pastatomatevima.jpg
-Arroz (1kg),10,si,arroz-riograndino.jpg
-Frijoles Negros (1kg),10,si,frijoles-n-sebraz.webp
-Azúcar Blanca (1kg),10,si,azucar-b-pateko.jpg
-Café (250g),10,si,cafe-sebraz.webp
+Producto,Precio,Disponible
+Arroz (1kg),10,Si
+Azúcar Blanca (1kg),10,Si
+Café (250g),10,Si
+Cerveza Calatrava,10,Si
+Cerveza Unlaguer,10,Si
+Frijoles Negros (1kg),10,Si
+Galletas Oreo (pqt. 6 galletas),10,Si
+Mayonesa Casera Vima (255ml),1,Si
+Papitas Pringles Original,10,Si
+Pasta de Tomate Vima (400g),10,Si
+Refresco Brio Cola,10,Si
+Refresco Brio Naranja,10,Si
