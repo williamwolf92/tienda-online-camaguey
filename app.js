@@ -4,19 +4,19 @@
    { item: {name, priceValue, priceDisplay, image}, qty } objects. */
 
 /*  WhatsApp 
-   Número de destino en formato internacional, sin '+' ni espacios.
-   Ejemplo: '34612345678' para España, '5491112345678' para Argentina.  */
+   NÃºmero de destino en formato internacional, sin '+' ni espacios.
+   Ejemplo: '34612345678' para EspaÃ±a, '5491112345678' para Argentina.  */
 const WHATSAPP_NUMBER = '5351110757';
 
 /*  Web3Forms 
-   Endpoint de envío por correo. El access_key ya viaja como input oculto
+   Endpoint de envÃ­o por correo. El access_key ya viaja como input oculto
    dentro del formulario (#pedidoForm). */
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 
 const CART_STORAGE_KEY = 'mi_app_carrito_v1';
 const cart = [];
 
-/* Map<itemKey, badgeElement> – to update badges without re-rendering cards */
+/* Map<itemKey, badgeElement> to update badges without re-rendering cards */
 const productBadges = new Map();
 
 function itemKey(item) {
@@ -99,7 +99,7 @@ function createProductCard(item) {
   /*  add button */
   const addBtn = document.createElement('button');
   addBtn.className = 'card-btn-add';
-  addBtn.setAttribute('aria-label', `Añadir ${item.name} al carrito`);
+  addBtn.setAttribute('aria-label', `AÃ±adir ${item.name} al carrito`);
 
   const btnEmoji = document.createElement('span');
   btnEmoji.textContent = 'Agregar';
@@ -123,11 +123,11 @@ function createProductCard(item) {
     saveCartToStorage();
   });
 
-  /*  remove button */
+  /* âœ• remove button */
   const removeBtn = document.createElement('button');
   removeBtn.className = 'card-btn-remove';
   removeBtn.setAttribute('aria-label', `Quitar ${item.name} del carrito`);
-  removeBtn.textContent = '';
+  removeBtn.textContent = 'âœ•';
 
   removeBtn.addEventListener('click', () => {
     const idx = cart.findIndex(c => c.item.name === item.name && c.item.priceValue === item.priceValue);
@@ -204,9 +204,9 @@ async function loadAndRenderProducts() {
     dataLines.forEach(line => {
       const [namePart, pricePart, disponibilidadPart, imagePart] = parseCsvLine(line);
 
-      /* Solo mostrar el producto si disponibilidad es "Si" (no distingue mayúsculas/acentos) */
+      /* Solo mostrar el producto si disponibilidad es "Si" (no distingue mayÃºsculas/acentos) */
       const disponibilidad = (disponibilidadPart || '').trim().toLowerCase();
-      if (disponibilidad !== 'si' && disponibilidad !== 'sí') return;
+      if (disponibilidad !== 'si' && disponibilidad !== 'sÃ­') return;
 
       const priceValue = Number(pricePart) || 0;
       const product = {
@@ -232,7 +232,7 @@ async function loadAndRenderProducts() {
 
 loadAndRenderProducts();
 
-/* --- Barra de búsqueda: filtra las tarjetas de productos en tiempo real --- */
+/* --- Barra de bÃºsqueda: filtra las tarjetas de productos en tiempo real --- */
 const searchInput = document.getElementById('search-input');
 const searchMenuContainer = document.getElementById('menu-container');
 let noResultsEl = null;
@@ -350,7 +350,7 @@ function renderCart() {
   if (cart.length === 0) {
     const li = document.createElement('li');
     li.className = 'cart-row';
-    li.textContent = 'Carrito vacío. Pulse Agregar en los productos para añadirlos.';
+    li.textContent = 'Carrito vacÃ­o. Pulse Agregar en los productos para aÃ±adirlos.';
     cartItemsList.appendChild(li);
     cartTotalEl.textContent = formatCurrency(0);
     saveCartToStorage();
@@ -550,7 +550,7 @@ if (orderClose)    orderClose.addEventListener('click', closeOrderModal);
 if (orderCancel)   orderCancel.addEventListener('click', closeOrderModal);
 if (orderBackdrop) orderBackdrop.addEventListener('click', closeOrderModal);
 
-/* --- Modal de confirmación de envío --- */
+/* --- Modal de confirmaciÃ³n de envÃ­o --- */
 const confirmModal  = document.getElementById('confirm-modal');
 const confirmYesBtn = document.getElementById('confirm-yes');
 const confirmNoBtn  = document.getElementById('confirm-no');
@@ -562,16 +562,16 @@ function openConfirmModal(onConfirm) {
 
   let secs = 5;
   confirmYesBtn.disabled = true;
-  confirmYesBtn.textContent = `Sí (${secs})`;
+  confirmYesBtn.textContent = `SÃ­ (${secs})`;
 
   confirmCountdownId = setInterval(() => {
     secs--;
     if (secs > 0) {
-      confirmYesBtn.textContent = `Sí (${secs})`;
+      confirmYesBtn.textContent = `SÃ­ (${secs})`;
     } else {
       clearInterval(confirmCountdownId);
       confirmYesBtn.disabled = false;
-      confirmYesBtn.textContent = 'Sí';
+      confirmYesBtn.textContent = 'SÃ­';
     }
   }, 1000);
 
@@ -668,7 +668,7 @@ if (pedidoForm) {
       const pin       = inputPin   ? inputPin.value.trim()   : '';
       const entrega   = deliveryRadios.find(r => r.checked)?.value || '';
       const direccion = (entrega === 'Domicilio' && inputAddress) ? inputAddress.value.trim() : '';
-      /* Normalizar saltos de línea del textarea (evita \r\n en Windows) */
+      /* Normalizar saltos de lÃ­nea del textarea (evita \r\n en Windows) */
       const productos = formItems    ? formItems.value.replace(/\r\n|\r/g, '\n') : '';
       const total     = formTotal    ? formTotal.value    : '';
       const datetime  = formDatetime ? formDatetime.value : '';
@@ -690,11 +690,11 @@ if (pedidoForm) {
       lineas.push(`\u{1F4B0} *Total: ${total}*`);
       lineas.push(`\u{1F4C5} ${datetime}`);
 
-      /* Unir con salto de línea y codificar para URL */
+      /* Unir con salto de lÃ­nea y codificar para URL */
       const mensaje = lineas.join('\n');
       const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`;
 
-      /* Estado "enviando" en el botón mientras se contacta con Web3Forms */
+      /* Estado "enviando" en el botÃ³n mientras se contacta con Web3Forms */
       const originalBtnText = submitBtn ? submitBtn.textContent : '';
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -702,8 +702,8 @@ if (pedidoForm) {
       }
 
       try {
-        /* Enviar el pedido por correo a través de Web3Forms.
-           Se envía únicamente el campo "Fecha y hora", sin los demás
+        /* Enviar el pedido por correo a travÃ©s de Web3Forms.
+           Se envÃ­a Ãºnicamente el campo "Fecha y hora", sin los demÃ¡s
            campos individuales del formulario ni el mensaje compilado,
            para que el correo llegue limpio y legible. */
         const accessKey = pedidoForm.querySelector('input[name="access_key"]')?.value || '';
@@ -726,12 +726,12 @@ if (pedidoForm) {
         try { data = await response.json(); } catch (_) { /* respuesta no-JSON */ }
 
         if (!response.ok || !data || data.success !== true) {
-          throw new Error((data && data.message) || 'Fallo en el envío del correo');
+          throw new Error((data && data.message) || 'Fallo en el envÃ­o del correo');
         }
 
-        /* Envío correcto: vaciar carrito, persistir y abrir WhatsApp.
-           No se muestra la pantalla de éxito de Web3Forms porque nunca
-           se navega a su endpoint; todo ocurre vía fetch en segundo plano. */
+        /* EnvÃ­o correcto: vaciar carrito, persistir y abrir WhatsApp.
+           No se muestra la pantalla de Ã©xito de Web3Forms porque nunca
+           se navega a su endpoint; todo ocurre vÃ­a fetch en segundo plano. */
         pedidoForm.reset();
         formItems.value = '';
         formTotal.value = formatCurrency(0);
@@ -742,9 +742,9 @@ if (pedidoForm) {
 
         window.location.href = url;
       } catch (err) {
-        /* Error de envío: no se abre WhatsApp, se muestra un toast y se
+        /* Error de envÃ­o: no se abre WhatsApp, se muestra un toast y se
            deja el formulario intacto para que el usuario pueda reintentar. */
-        showToast('No se pudo enviar el pedido. Por favor, inténtalo de nuevo.');
+        showToast('No se pudo enviar el pedido. Por favor, intÃ©ntalo de nuevo.');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
