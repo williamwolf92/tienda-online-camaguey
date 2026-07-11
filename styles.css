@@ -29,7 +29,6 @@ html, body {
 
 body {
   background-color: var(--bg);
-  background-image: radial-gradient(circle at 15% 0%, #e6edfb 0%, transparent 45%);
   padding: 96px 16px 40px;
 }
 
@@ -386,6 +385,7 @@ body.cart-open #cart-sidebar {
   gap: 18px;
   justify-content: center;
   align-items: flex-start;
+  padding-bottom: 15px;
 }
 
 .load-error {
