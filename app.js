@@ -138,9 +138,19 @@ function createProductCard(item) {
   addBtn.appendChild(btnEmoji);
   addBtn.appendChild(badge);
 
-  addBtn.addEventListener('click', () => {
-    addToCart(item);
-  });
+  if (item.available === false) {
+    /* Producto agotado: el botón "Agregar" se convierte en "Agotado" y
+       adopta el mismo estilo que el botón ✕ de la tarjeta. No permite
+       añadir el producto al carrito. */
+    addBtn.classList.add('card-btn-unavailable');
+    addBtn.disabled = true;
+    btnEmoji.textContent = 'Agotado';
+    addBtn.setAttribute('aria-label', `${item.name} agotado`);
+  } else {
+    addBtn.addEventListener('click', () => {
+      addToCart(item);
+    });
+  }
 
   /* ✕ remove button */
   const removeBtn = document.createElement('button');
@@ -218,9 +228,10 @@ async function loadAndRenderProducts() {
     dataLines.forEach(line => {
       const [namePart, descriptionPart, pricePart, disponibilidadPart, imagePart] = parseCsvLine(line);
 
-      /* Solo mostrar el producto si disponibilidad es "Si" (no distingue mayúsculas/acentos) */
+      /* Ya no se oculta el producto si disponibilidad es "No"; en su lugar
+         se marca como no disponible y la tarjeta muestra "Agotado". */
       const disponibilidad = (disponibilidadPart || '').trim().toLowerCase();
-      if (disponibilidad !== 'si' && disponibilidad !== 'sí') return;
+      const available = disponibilidad !== 'no';
 
       const priceValue = Number(pricePart) || 0;
       const product = {
@@ -228,7 +239,8 @@ async function loadAndRenderProducts() {
         description: (descriptionPart || '').trim(),
         priceValue,
         priceDisplay: `$ ${priceValue.toFixed(2)}`,
-        image: imagePart ? `img/${imagePart.trim()}` : ''
+        image: imagePart ? `img/${imagePart.trim()}` : '',
+        available
       };
 
       fragment.appendChild(createProductCard(product));
@@ -549,6 +561,21 @@ function openDetailModal(item) {
 
   updateDetailBadge();
 
+  if (detailAddBtn) {
+    const btnLabel = detailAddBtn.querySelector('span');
+    if (item.available === false) {
+      detailAddBtn.classList.add('card-btn-unavailable');
+      detailAddBtn.disabled = true;
+      if (btnLabel) btnLabel.textContent = 'Agotado';
+      detailAddBtn.setAttribute('aria-label', `${item.name} agotado`);
+    } else {
+      detailAddBtn.classList.remove('card-btn-unavailable');
+      detailAddBtn.disabled = false;
+      if (btnLabel) btnLabel.textContent = 'Agregar';
+      detailAddBtn.setAttribute('aria-label', 'Añadir al carrito');
+    }
+  }
+
   detailModal.classList.remove('modal-hidden');
   detailModal.setAttribute('aria-hidden', 'false');
   closeSidebar();
@@ -565,7 +592,7 @@ if (detailBackdrop) detailBackdrop.addEventListener('click', closeDetailModal);
 
 if (detailAddBtn) {
   detailAddBtn.addEventListener('click', () => {
-    if (!currentDetailItem) return;
+    if (!currentDetailItem || currentDetailItem.available === false) return;
     addToCart(currentDetailItem);
   });
 }

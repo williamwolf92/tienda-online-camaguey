@@ -498,6 +498,19 @@ body.cart-open #cart-sidebar {
   transform: scale(0.92);
 }
 
+/* Botón "Agregar" cuando el producto está agotado: mismo estilo que el botón ✕ */
+.card-btn-add.card-btn-unavailable,
+.card-btn-add.card-btn-unavailable:hover,
+.card-btn-add.card-btn-unavailable:disabled {
+  background: #fdeceb;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  cursor: default;
+}
+.card-btn-add.card-btn-unavailable:active {
+  transform: none;
+}
+
 /* Badge on cart icon */
 .product-badge {
   position: absolute;
