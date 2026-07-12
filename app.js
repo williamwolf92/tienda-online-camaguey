@@ -3,12 +3,12 @@
 /* Cart is persisted to localStorage. The in-memory 'cart' is an array of
    { item: {name, priceValue, priceDisplay, image}, qty } objects. */
 
-/*  WhatsApp 
+/* -- WhatsApp ----------------------------------------------------------
    Número de destino en formato internacional, sin '+' ni espacios.
    Ejemplo: '34612345678' para España, '5491112345678' para Argentina.  */
 const WHATSAPP_NUMBER = '5351110757';
 
-/*  Web3Forms 
+/* -- Web3Forms ---------------------------------------------------------
    Endpoint de envío por correo. El access_key ya viaja como input oculto
    dentro del formulario (#pedidoForm). */
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
@@ -16,8 +16,20 @@ const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 const CART_STORAGE_KEY = 'mi_app_carrito_v1';
 const cart = [];
 
-/* Map<itemKey, badgeElement> to update badges without re-rendering cards */
+/* Map<itemKey, badgeElement[]> to update badges without re-rendering cards.
+   Un mismo producto puede aparecer en la fila de "Populares" y en su grupo
+   de categoría a la vez, así que cada key puede tener varios badges. */
 const productBadges = new Map();
+
+/* Estado del catálogo cargado desde el CSV */
+let allProducts = [];
+let categoriesList = [];
+let activeCategory = null;
+
+function registerBadge(key, badgeEl) {
+  if (!productBadges.has(key)) productBadges.set(key, []);
+  productBadges.get(key).push(badgeEl);
+}
 
 function itemKey(item) {
   return `${item.name}|${item.priceValue}`;
@@ -74,8 +86,9 @@ async function fetchTextWithFallback(path) {
   } catch (e) { return null; }
 }
 
-/* Helper: create a product card element */
-function createProductCard(item) {
+/* Helper: create a product card element.
+   opts.popularBadge = true agrega el badge "Popular" sobre la foto. */
+function createProductCard(item, opts = {}) {
   const card = document.createElement('div');
   card.className = 'product-card';
 
@@ -96,6 +109,21 @@ function createProductCard(item) {
     placeholder.textContent = 'Sin imagen';
     imgWrap.appendChild(placeholder);
   }
+
+  if (opts.popularBadge) {
+    const popularBadge = document.createElement('span');
+    popularBadge.className = 'popular-badge';
+    popularBadge.textContent = 'Popular';
+    imgWrap.appendChild(popularBadge);
+  }
+
+  if (item.hasDiscount) {
+    const rebajaBadge = document.createElement('span');
+    rebajaBadge.className = 'rebaja-badge';
+    rebajaBadge.textContent = 'Rebaja';
+    imgWrap.appendChild(rebajaBadge);
+  }
+
   imgWrap.addEventListener('click', () => openDetailModal(item));
   card.appendChild(imgWrap);
 
@@ -107,19 +135,37 @@ function createProductCard(item) {
   name.className = 'product-card-name';
   name.textContent = item.name;
 
-  const price = document.createElement('div');
-  price.className = 'product-card-price';
-  price.textContent = item.priceDisplay;
-
   body.appendChild(name);
-  body.appendChild(price);
+
+  if (item.hasDiscount) {
+    const priceWrap = document.createElement('div');
+    priceWrap.className = 'product-card-price-wrap';
+
+    const priceNow = document.createElement('span');
+    priceNow.className = 'product-card-price';
+    priceNow.textContent = item.priceDisplay;
+
+    const priceOld = document.createElement('span');
+    priceOld.className = 'product-card-price-old';
+    priceOld.textContent = item.originalPriceDisplay;
+
+    priceWrap.appendChild(priceNow);
+    priceWrap.appendChild(priceOld);
+    body.appendChild(priceWrap);
+  } else {
+    const price = document.createElement('div');
+    price.className = 'product-card-price';
+    price.textContent = item.priceDisplay;
+    body.appendChild(price);
+  }
+
   card.appendChild(body);
 
   /* Action buttons */
   const actions = document.createElement('div');
   actions.className = 'product-card-actions';
 
-  /*  add button */
+  /* - add button */
   const addBtn = document.createElement('button');
   addBtn.className = 'card-btn-add';
   addBtn.setAttribute('aria-label', `Añadir ${item.name} al carrito`);
@@ -133,7 +179,7 @@ function createProductCard(item) {
   badge.style.display = 'none';
 
   /* Register badge in map for later updates */
-  productBadges.set(itemKey(item), badge);
+  registerBadge(itemKey(item), badge);
 
   addBtn.appendChild(btnEmoji);
   addBtn.appendChild(badge);
@@ -195,14 +241,22 @@ function parseCsvLine(line) {
   return fields.map(f => f.trim());
 }
 
-/* Parse the inventario.csv format: producto,descripcion,precio,disponible,foto */
+/* Parse el formato inventario.csv:
+   producto,categoria,descripcion,precio,descuento,disponible,popular,foto */
 async function loadAndRenderProducts() {
   const container = document.getElementById('menu-container');
   container.innerHTML = '';
   productBadges.clear();
+  allProducts = [];
+  categoriesList = [];
+  activeCategory = null;
 
   const showError = (msg) => {
     container.innerHTML = `<p class="load-error">${msg}</p>`;
+    const popularWrap = document.getElementById('popular-wrap');
+    if (popularWrap) popularWrap.style.display = 'none';
+    const chipsEl = document.getElementById('category-chips');
+    if (chipsEl) chipsEl.innerHTML = '';
   };
 
   try {
@@ -223,38 +277,138 @@ async function loadAndRenderProducts() {
     const hasHeader = headerFields[0] === 'producto';
     const dataLines = hasHeader ? lines.slice(1) : lines;
 
-    const fragment = document.createDocumentFragment();
-
     dataLines.forEach(line => {
-      const [namePart, descriptionPart, pricePart, disponibilidadPart, imagePart] = parseCsvLine(line);
+      const [namePart, categoryPart, descriptionPart, pricePart, discountPart, disponibilidadPart, popularPart, imagePart] = parseCsvLine(line);
 
       /* Ya no se oculta el producto si disponibilidad es "No"; en su lugar
          se marca como no disponible y la tarjeta muestra "Agotado". */
       const disponibilidad = (disponibilidadPart || '').trim().toLowerCase();
       const available = disponibilidad !== 'no';
 
-      const priceValue = Number(pricePart) || 0;
+      const popularNorm = normalizeText((popularPart || '').trim());
+      const popular = popularNorm === 'si';
+
+      const originalPrice = Number(pricePart) || 0;
+      const discountRaw = Number(discountPart);
+      const hasDiscount = Boolean((discountPart || '').trim()) && discountRaw > 0 && discountRaw < originalPrice;
+      const finalPrice = hasDiscount ? discountRaw : originalPrice;
+
+      const category = (categoryPart || '').trim() || 'Sin categoría';
+
       const product = {
         name: (namePart || '').trim() || 'Producto',
+        category,
         description: (descriptionPart || '').trim(),
-        priceValue,
-        priceDisplay: `$ ${priceValue.toFixed(2)}`,
+        priceValue: finalPrice,
+        priceDisplay: formatCurrency(finalPrice),
+        hasDiscount,
+        originalPriceDisplay: formatCurrency(originalPrice),
         image: imagePart ? `img/${imagePart.trim()}` : '',
-        available
+        available,
+        popular
       };
 
-      fragment.appendChild(createProductCard(product));
+      allProducts.push(product);
+      if (!categoriesList.includes(category)) categoriesList.push(category);
     });
 
-    container.appendChild(fragment);
-
-    /* Sync badges with any previously loaded cart */
-    updateProductBadges();
+    renderStore();
 
   } catch (err) {
     showError(`Imposible leer inventario.csv: ${err.message}`);
     console.error(err);
   }
+}
+
+/* Renderiza chips de categoría + fila de populares + catálogo agrupado,
+   y vuelve a sincronizar los badges del carrito. Se reutiliza cada vez
+   que cambia el filtro de categoría activo. */
+function renderStore() {
+  productBadges.clear();
+  renderCategoryChips();
+  renderPopularRow();
+  renderCatalog();
+  updateProductBadges();
+}
+
+/* Fila desplazable de chips de categoría (toggle, filtra el catálogo) */
+function renderCategoryChips() {
+  const wrap = document.getElementById('category-chips');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  categoriesList.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'category-chip';
+    if (cat === activeCategory) chip.classList.add('active');
+    chip.textContent = cat;
+
+    chip.addEventListener('click', () => {
+      activeCategory = (activeCategory === cat) ? null : cat;
+      renderStore();
+    });
+
+    wrap.appendChild(chip);
+  });
+}
+
+/* Fila desplazable con los productos marcados como Populares en el CSV.
+   Siempre se muestran, sin importar el filtro de categoría activo. */
+function renderPopularRow() {
+  const container = document.getElementById('popular-container');
+  const wrap = document.getElementById('popular-wrap');
+  if (!container || !wrap) return;
+  container.innerHTML = '';
+
+  const populars = allProducts.filter(p => p.popular);
+  if (!populars.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = '';
+  const fragment = document.createDocumentFragment();
+  populars.forEach(item => fragment.appendChild(createProductCard(item, { popularBadge: true })));
+  container.appendChild(fragment);
+}
+
+/* Catálogo agrupado por categoría, respetando el chip de categoría activo */
+function renderCatalog() {
+  const container = document.getElementById('menu-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const catsToShow = activeCategory ? categoriesList.filter(c => c === activeCategory) : categoriesList;
+
+  if (!catsToShow.length) {
+    container.innerHTML = '<p class="load-error">No se encontraron productos.</p>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  catsToShow.forEach(cat => {
+    const items = allProducts.filter(p => p.category === cat);
+    if (!items.length) return;
+
+    const group = document.createElement('div');
+    group.className = 'category-group';
+
+    const title = document.createElement('h3');
+    title.className = 'category-group-title';
+    title.textContent = cat;
+    group.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'category-group-grid';
+    items.forEach(item => grid.appendChild(createProductCard(item)));
+    group.appendChild(grid);
+
+    fragment.appendChild(group);
+  });
+
+  container.appendChild(fragment);
 }
 
 loadAndRenderProducts();
@@ -283,6 +437,14 @@ function filterProducts(query) {
     const matches = q === '' || name.includes(q);
     card.style.display = matches ? '' : 'none';
     if (matches) visibleCount++;
+  });
+
+  /* Oculta los grupos de categoría que se quedaron sin tarjetas visibles */
+  const groups = searchMenuContainer.querySelectorAll('.category-group');
+  groups.forEach((group) => {
+    const hasVisible = Array.from(group.querySelectorAll('.product-card'))
+      .some(card => card.style.display !== 'none');
+    group.style.display = hasVisible ? '' : 'none';
   });
 
   if (!noResultsEl) {
@@ -353,13 +515,17 @@ function loadCartFromStorage() {
   } catch (e) { /* ignore */ }
 }
 
-/* Update every product-card badge to reflect current cart qty */
+/* Update every product-card badge to reflect current cart qty.
+   Un mismo producto puede tener varios badges (fila Populares + su
+   grupo de categoría), así que se actualizan todos los de su key. */
 function updateProductBadges() {
-  productBadges.forEach((badge, key) => {
+  productBadges.forEach((badges, key) => {
     const entry = cart.find(c => itemKey(c.item) === key);
     const qty = entry ? entry.qty : 0;
-    badge.textContent = String(qty);
-    badge.style.display = qty > 0 ? 'inline-flex' : 'none';
+    badges.forEach(badge => {
+      badge.textContent = String(qty);
+      badge.style.display = qty > 0 ? 'inline-flex' : 'none';
+    });
   });
 }
 
@@ -706,7 +872,7 @@ function closeConfirmModal(callback) {
   }, 180);
 }
 
-/*  Toast de error  */
+/* -- Toast de error -------------------------------------------------- */
 const toastEl        = document.getElementById('toast');
 const toastMessageEl = document.getElementById('toast-message');
 let toastTimeoutId   = null;
