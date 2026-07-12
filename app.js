@@ -1018,7 +1018,7 @@ if (pedidoForm) {
       } catch (err) {
         /* Error de envío: no se abre WhatsApp, se muestra un toast y se
            deja el formulario intacto para que el usuario pueda reintentar. */
-        showToast('No se pudo enviar el pedido. Por favor, inténtalo de nuevo.');
+        showToast('Error de envío. Por favor, revise su conexión.');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
