@@ -124,7 +124,6 @@ function createProductCard(item, opts = {}) {
     imgWrap.appendChild(rebajaBadge);
   }
 
-  imgWrap.addEventListener('click', () => openDetailModal(item));
   card.appendChild(imgWrap);
 
   /* Text body */
@@ -161,55 +160,18 @@ function createProductCard(item, opts = {}) {
 
   card.appendChild(body);
 
-  /* Action buttons */
+  /* Action button: Detalles (misma función que antes tenía la foto: abre el modal de detalle) */
   const actions = document.createElement('div');
   actions.className = 'product-card-actions';
 
-  /* - add button */
-  const addBtn = document.createElement('button');
-  addBtn.className = 'card-btn-add';
-  addBtn.setAttribute('aria-label', `Añadir ${item.name} al carrito`);
+  const detailsBtn = document.createElement('button');
+  detailsBtn.className = 'card-btn-details';
+  detailsBtn.setAttribute('aria-label', `Ver detalles de ${item.name}`);
+  detailsBtn.textContent = 'Detalles';
 
-  const btnEmoji = document.createElement('span');
-  btnEmoji.textContent = 'Agregar';
+  detailsBtn.addEventListener('click', () => openDetailModal(item));
 
-  const badge = document.createElement('span');
-  badge.className = 'product-badge';
-  badge.textContent = '0';
-  badge.style.display = 'none';
-
-  /* Register badge in map for later updates */
-  registerBadge(itemKey(item), badge);
-
-  addBtn.appendChild(btnEmoji);
-  addBtn.appendChild(badge);
-
-  if (item.available === false) {
-    /* Producto agotado: el botón "Agregar" se convierte en "Agotado" y
-       adopta el mismo estilo que el botón ✕ de la tarjeta. No permite
-       añadir el producto al carrito. */
-    addBtn.classList.add('card-btn-unavailable');
-    addBtn.disabled = true;
-    btnEmoji.textContent = 'Agotado';
-    addBtn.setAttribute('aria-label', `${item.name} agotado`);
-  } else {
-    addBtn.addEventListener('click', () => {
-      addToCart(item);
-    });
-  }
-
-  /* ✕ remove button */
-  const removeBtn = document.createElement('button');
-  removeBtn.className = 'card-btn-remove';
-  removeBtn.setAttribute('aria-label', `Quitar ${item.name} del carrito`);
-  removeBtn.textContent = '✕';
-
-  removeBtn.addEventListener('click', () => {
-    removeFromCart(item);
-  });
-
-  actions.appendChild(addBtn);
-  actions.appendChild(removeBtn);
+  actions.appendChild(detailsBtn);
   card.appendChild(actions);
 
   return card;
@@ -544,7 +506,7 @@ function renderCart() {
   if (cart.length === 0) {
     const li = document.createElement('li');
     li.className = 'cart-row';
-    li.textContent = 'Carrito vacío. Pulse Agregar en los productos para añadirlos.';
+    li.textContent = 'Carrito vacío. Pulse Detalles en los productos para añadirlos.';
     cartItemsList.appendChild(li);
     cartTotalEl.textContent = formatCurrency(0);
     saveCartToStorage();

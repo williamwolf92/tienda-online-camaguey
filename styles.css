@@ -626,6 +626,30 @@ body.cart-open #cart-sidebar {
   transform: none;
 }
 
+/* Details button (único botón de la tarjeta, abre el modal de detalle) */
+.card-btn-details {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: transform 0.15s ease, background 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+.card-btn-details:hover {
+  background: var(--accent-dark);
+}
+.card-btn-details:active {
+  transform: scale(0.92);
+}
+
 /* Badge on cart icon */
 .product-badge {
   position: absolute;
