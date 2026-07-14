@@ -677,7 +677,7 @@ function openDetailModal(item) {
   currentDetailItem = item;
 
   detailNameEl.textContent = `${item.name} - ${item.priceDisplay}`;
-  detailDescriptionEl.textContent = item.description || '';
+  detailDescriptionEl.textContent = (item.description || '').replace(/\\n/g, '\n');
 
   if (detailImageEl && detailPlaceholderEl) {
     const hasImage = Boolean(item.image);
