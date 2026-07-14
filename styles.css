@@ -913,6 +913,7 @@ body.cart-open #cart-sidebar {
   color: var(--text-soft);
   text-align: center;
   line-height: 1.5;
+  white-space: pre-line;
 }
 .detail-footer {
   justify-content: center;
