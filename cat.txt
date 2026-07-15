@@ -6,3 +6,4 @@ Placer
 Transporte
 Calzado
 Muebles
+Utilidades
