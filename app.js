@@ -474,6 +474,23 @@ const infoCloseBtn = document.getElementById('info-close-btn');
 const infoContent  = document.getElementById('info-content');
 let infoContentLoaded = false;
 
+/*
+ * info.html se carga vía fetch y su <style> se inyecta dentro de #info-content.
+ * Un <style> siempre aplica de forma global al documento sin importar en qué
+ * nodo lo insertes, así que si ese CSS trae reglas "html {...}" o "body {...}"
+ * (pensadas para cuando info.html se abre como página independiente) terminan
+ * pisando los estilos reales del body de la SPA (por ejemplo su padding).
+ * Esta función reemplaza esos selectores por el contenedor del panel para
+ * que el CSS quede aislado y no se filtre al resto de la página.
+ */
+function scopeInjectedCss(cssText, scopeSelector) {
+  if (!cssText) return '';
+  return cssText.replace(
+    /(^|[\s,{}])(html|body)(?=[\s,{.:#>+~)]|$)/g,
+    `$1${scopeSelector}`
+  );
+}
+
 async function loadInfoContent() {
   if (!infoContent || infoContentLoaded) return;
   infoContentLoaded = true;
@@ -486,7 +503,10 @@ async function loadInfoContent() {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const styleTag = doc.querySelector('style');
     const bodyHtml = doc.body ? doc.body.innerHTML : '';
-    infoContent.innerHTML = (styleTag ? styleTag.outerHTML : '') + bodyHtml;
+    const scopedStyle = styleTag
+      ? `<style>${scopeInjectedCss(styleTag.textContent, '#info-content')}</style>`
+      : '';
+    infoContent.innerHTML = scopedStyle + bodyHtml;
   } catch (err) {
     infoContent.innerHTML = '<p class="load-error">No se pudo cargar info.html.</p>';
     console.error(err);
