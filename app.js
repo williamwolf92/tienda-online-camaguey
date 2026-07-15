@@ -749,6 +749,7 @@ const detailBackdrop     = document.getElementById('detail-backdrop');
 const detailClose        = document.getElementById('detail-close');
 const detailImageEl      = document.getElementById('detail-item-image');
 const detailPlaceholderEl = document.getElementById('detail-item-image-placeholder');
+const detailDownloadBtn  = document.getElementById('detail-download-btn');
 const detailNameEl       = document.getElementById('detail-item-name');
 const detailDescriptionEl = document.getElementById('detail-item-description');
 const detailAddBtn       = document.getElementById('detail-add');
@@ -777,6 +778,9 @@ function openDetailModal(item) {
     detailImageEl.alt = hasImage ? item.name : '';
     detailImageEl.style.display = hasImage ? 'block' : 'none';
     detailPlaceholderEl.style.display = hasImage ? 'none' : 'flex';
+    if (detailDownloadBtn) {
+      detailDownloadBtn.style.display = hasImage ? 'flex' : 'none';
+    }
   }
 
   updateDetailBadge();
@@ -809,6 +813,30 @@ function closeDetailModal() {
 
 if (detailClose)    detailClose.addEventListener('click', closeDetailModal);
 if (detailBackdrop) detailBackdrop.addEventListener('click', closeDetailModal);
+
+if (detailDownloadBtn) {
+  detailDownloadBtn.addEventListener('click', async () => {
+    if (!currentDetailItem || !currentDetailItem.image) return;
+    const url = currentDetailItem.image;
+    const safeName = (currentDetailItem.name || 'foto').trim().replace(/[^\w\-]+/g, '_');
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) throw new Error('No se pudo descargar la imagen');
+      const blob = await response.blob();
+      const ext = (blob.type && blob.type.split('/')[1]) || 'jpg';
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${safeName}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      window.open(url, '_blank');
+    }
+  });
+}
 
 if (detailAddBtn) {
   detailAddBtn.addEventListener('click', () => {
