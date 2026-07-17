@@ -250,7 +250,7 @@ async function loadAndRenderProducts() {
 
   try {
     const [text] = await Promise.all([
-      fetchTextWithFallback('./inventario.csv'),
+      fetchTextWithFallback(`./inventario.csv?v=${Date.now()}`),
       loadChipCategories(),
     ]);
     if (!text) {
@@ -463,7 +463,6 @@ if (searchInput) {
 const cartSidebar   = document.getElementById('cart-sidebar');
 const cartToggle    = document.getElementById('cart-toggle');
 const cartItemsList = document.getElementById('cart-items-list');
-const cartTotalEl   = document.getElementById('cart-total');
 const cartBadge     = document.getElementById('cart-badge');
 const orderBtn      = document.getElementById('order-btn');
 const cartCloseBtn  = document.getElementById('cart-close-btn');
@@ -555,6 +554,45 @@ function formatCurrency(n) {
   return `$ ${Number(n).toFixed(0)}`;
 }
 
+/* Solo existen dos monedas posibles (ver loadAndRenderProducts), pero el
+   orden fijo evita que CUP/USD salten de posición entre renders. */
+const CURRENCY_ORDER = ['CUP', 'USD'];
+
+/* Agrupa las entradas del carrito por moneda, en el orden de CURRENCY_ORDER,
+   omitiendo monedas sin productos. */
+function groupCartByCurrency(cartArr) {
+  const groups = new Map();
+  CURRENCY_ORDER.forEach(cur => {
+    const entries = cartArr.filter(c => (c.item.currency || 'CUP') === cur);
+    if (entries.length) groups.set(cur, entries);
+  });
+  return groups;
+}
+
+/* Construye, a partir del carrito, el texto de productos agrupado por
+   moneda (para el textarea del pedido y el mensaje de WhatsApp) y la
+   lista de totales por moneda. Se reutiliza en el modal de pedido, el
+   carrito lateral y el envío final para que los tres queden siempre
+   sincronizados. */
+function buildOrderSummary(cartArr) {
+  const groups = groupCartByCurrency(cartArr);
+  const itemLines = [];
+  const totals = [];
+
+  groups.forEach((entries, cur) => {
+    itemLines.push(`— ${cur} —`);
+    entries.forEach(c => itemLines.push(`${c.qty} x ${c.item.name} (${c.item.priceDisplay})`));
+    itemLines.push('');
+
+    const total = entries.reduce((s, c) => s + c.qty * c.item.priceValue, 0);
+    totals.push({ currency: cur, total, display: `${formatCurrency(total)} ${cur}` });
+  });
+
+  if (itemLines[itemLines.length - 1] === '') itemLines.pop();
+
+  return { itemsText: itemLines.join('\n'), totals };
+}
+
 function updateOrderBtn() {
   if (orderBtn) orderBtn.disabled = cart.length === 0;
 }
@@ -575,11 +613,14 @@ function loadCartFromStorage() {
       if (entry && entry.item && typeof entry.qty === 'number') {
         cart.push({
           item: {
-            name:         String(entry.item.name || 'Producto'),
-            description:  String(entry.item.description || ''),
-            priceValue:   Number(entry.item.priceValue) || 0,
-            priceDisplay: String(entry.item.priceDisplay || `$ ${(Number(entry.item.priceValue) || 0).toFixed(2)}`),
-            image:        String(entry.item.image || '')
+            name:                 String(entry.item.name || 'Producto'),
+            description:          String(entry.item.description || ''),
+            priceValue:           Number(entry.item.priceValue) || 0,
+            priceDisplay:         String(entry.item.priceDisplay || `$ ${(Number(entry.item.priceValue) || 0).toFixed(2)}`),
+            currency:             (String(entry.item.currency || '').trim().toUpperCase() === 'USD') ? 'USD' : 'CUP',
+            hasDiscount:          Boolean(entry.item.hasDiscount),
+            originalPriceDisplay: String(entry.item.originalPriceDisplay || ''),
+            image:                String(entry.item.image || '')
           },
           qty: Number(entry.qty)
         });
@@ -602,6 +643,30 @@ function updateProductBadges() {
   });
 }
 
+function renderCartTotals() {
+  const totalsWrap = document.getElementById('cart-totals');
+  if (!totalsWrap) return;
+  totalsWrap.innerHTML = '';
+
+  const { totals } = buildOrderSummary(cart);
+  const rows = totals.length ? totals : [{ currency: '', display: formatCurrency(0) }];
+
+  rows.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'cart-total-row';
+
+    const label = document.createElement('span');
+    label.textContent = t.currency ? `Total ${t.currency}` : 'Total';
+
+    const strong = document.createElement('strong');
+    strong.textContent = t.display;
+
+    row.appendChild(label);
+    row.appendChild(strong);
+    totalsWrap.appendChild(row);
+  });
+}
+
 function renderCart() {
   cartItemsList.innerHTML = '';
 
@@ -619,71 +684,80 @@ function renderCart() {
     li.className = 'cart-row';
     li.textContent = 'Carrito vacío. Pulse Detalles en los productos para añadirlos.';
     cartItemsList.appendChild(li);
-    cartTotalEl.textContent = formatCurrency(0);
+    renderCartTotals();
     saveCartToStorage();
     return;
   }
 
   const fragment = document.createDocumentFragment();
+  const groups = groupCartByCurrency(cart);
 
-  cart.forEach((entry, idx) => {
-    const row = document.createElement('li');
-    row.className = 'cart-row';
+  groups.forEach((entries, cur) => {
+    const header = document.createElement('li');
+    header.className = 'cart-currency-header';
+    header.textContent = cur;
+    fragment.appendChild(header);
 
-    const left = document.createElement('div');
-    left.className = 'cart-row-left';
+    entries.forEach(entry => {
+      const row = document.createElement('li');
+      row.className = 'cart-row';
 
-    const name = document.createElement('div');
-    name.className = 'cart-row-name';
-    name.textContent = entry.item.name;
+      const left = document.createElement('div');
+      left.className = 'cart-row-left';
 
-    const price = document.createElement('div');
-    price.className = 'cart-row-price';
-    price.textContent = entry.item.priceDisplay;
+      const name = document.createElement('div');
+      name.className = 'cart-row-name';
+      name.textContent = entry.item.name;
 
-    left.appendChild(name);
-    left.appendChild(price);
+      const price = document.createElement('div');
+      price.className = 'cart-row-price';
+      price.textContent = entry.item.priceDisplay;
 
-    const qtyWrap = document.createElement('div');
-    qtyWrap.className = 'cart-qty';
+      left.appendChild(name);
+      left.appendChild(price);
 
-    const decr = document.createElement('button');
-    decr.className = 'qty-btn';
-    decr.textContent = '-';
-    decr.addEventListener('click', () => {
-      if (entry.qty > 1) entry.qty--;
-      else cart.splice(idx, 1);
-      renderCart();
-      saveCartToStorage();
+      const qtyWrap = document.createElement('div');
+      qtyWrap.className = 'cart-qty';
+
+      const decr = document.createElement('button');
+      decr.className = 'qty-btn';
+      decr.textContent = '-';
+      decr.addEventListener('click', () => {
+        const idx = cart.indexOf(entry);
+        if (idx === -1) return;
+        if (cart[idx].qty > 1) cart[idx].qty--;
+        else cart.splice(idx, 1);
+        renderCart();
+        saveCartToStorage();
+      });
+
+      const val = document.createElement('div');
+      val.className = 'qty-val';
+      val.textContent = entry.qty;
+
+      const incr = document.createElement('button');
+      incr.className = 'qty-btn';
+      incr.textContent = '+';
+      incr.addEventListener('click', () => {
+        const idx = cart.indexOf(entry);
+        if (idx === -1) return;
+        cart[idx].qty++;
+        renderCart();
+        saveCartToStorage();
+      });
+
+      qtyWrap.appendChild(decr);
+      qtyWrap.appendChild(val);
+      qtyWrap.appendChild(incr);
+
+      row.appendChild(left);
+      row.appendChild(qtyWrap);
+      fragment.appendChild(row);
     });
-
-    const val = document.createElement('div');
-    val.className = 'qty-val';
-    val.textContent = entry.qty;
-
-    const incr = document.createElement('button');
-    incr.className = 'qty-btn';
-    incr.textContent = '+';
-    incr.addEventListener('click', () => {
-      entry.qty++;
-      renderCart();
-      saveCartToStorage();
-    });
-
-    qtyWrap.appendChild(decr);
-    qtyWrap.appendChild(val);
-    qtyWrap.appendChild(incr);
-
-    row.appendChild(left);
-    row.appendChild(qtyWrap);
-    fragment.appendChild(row);
   });
 
   cartItemsList.appendChild(fragment);
-
-  const total = cart.reduce((s, c) => s + c.qty * c.item.priceValue, 0);
-  cartTotalEl.textContent = formatCurrency(total);
-
+  renderCartTotals();
   saveCartToStorage();
 }
 
@@ -893,10 +967,11 @@ function formatLocalDateTimeForForm(date) {
 }
 
 function openOrderModal() {
-  const lines    = cart.map(c => `${c.qty} x ${c.item.name} (${c.item.priceDisplay}) `).join('\n');
-  const totalVal = cart.reduce((s, c) => s + c.item.priceValue * c.qty, 0);
-  formItems.value = lines;
-  formTotal.value = formatCurrency(totalVal);
+  const { itemsText, totals } = buildOrderSummary(cart);
+  formItems.value = itemsText;
+  formTotal.value = totals.length
+    ? totals.map(t => t.display).join(' | ')
+    : formatCurrency(0);
   if (formDatetime) {
     try { formDatetime.value = formatLocalDateTimeForForm(new Date()); }
     catch (e) { formDatetime.value = ''; }
@@ -925,54 +1000,6 @@ if (orderClose)    orderClose.addEventListener('click', closeOrderModal);
 if (orderCancel)   orderCancel.addEventListener('click', closeOrderModal);
 if (orderBackdrop) orderBackdrop.addEventListener('click', closeOrderModal);
 
-/* --- Modal de confirmación de envío --- */
-const confirmModal  = document.getElementById('confirm-modal');
-const confirmYesBtn = document.getElementById('confirm-yes');
-const confirmNoBtn  = document.getElementById('confirm-no');
-let confirmCountdownId = null;
-
-function openConfirmModal(onConfirm) {
-  confirmModal.classList.remove('modal-hidden');
-  confirmModal.setAttribute('aria-hidden', 'false');
-
-  let secs = 5;
-  confirmYesBtn.disabled = true;
-  confirmYesBtn.textContent = `Sí (${secs})`;
-
-  confirmCountdownId = setInterval(() => {
-    secs--;
-    if (secs > 0) {
-      confirmYesBtn.textContent = `Sí (${secs})`;
-    } else {
-      clearInterval(confirmCountdownId);
-      confirmYesBtn.disabled = false;
-      confirmYesBtn.textContent = 'Sí';
-    }
-  }, 1000);
-
-  function cleanup() {
-    clearInterval(confirmCountdownId);
-    confirmYesBtn.removeEventListener('click', handleYes);
-    confirmNoBtn.removeEventListener('click', handleNo);
-  }
-
-  function handleYes() { cleanup(); onConfirm(); closeConfirmModal(); }
-  function handleNo()  { cleanup(); closeConfirmModal(); }
-
-  confirmYesBtn.addEventListener('click', handleYes);
-  confirmNoBtn.addEventListener('click', handleNo);
-}
-
-function closeConfirmModal(callback) {
-  confirmModal.classList.add('modal-exiting');
-  setTimeout(() => {
-    confirmModal.classList.add('modal-hidden');
-    confirmModal.classList.remove('modal-exiting');
-    confirmModal.setAttribute('aria-hidden', 'true');
-    if (callback) callback();
-  }, 180);
-}
-
 /* -- Toast de error -------------------------------------------------- */
 const toastEl        = document.getElementById('toast');
 const toastMessageEl = document.getElementById('toast-message');
@@ -995,8 +1022,8 @@ if (pedidoForm) {
   const submitBtn      = pedidoForm.querySelector('button[type="submit"]');
   const inputName      = document.getElementById('cust-name');
   const inputPhone     = document.getElementById('cust-phone');
-  const inputPin       = document.getElementById('cust-pin');
   const inputAddress   = document.getElementById('cust-address');
+  const addressRow     = document.getElementById('address-row');
   const inputLocation  = document.getElementById('cust-location');
   const locationBtn    = document.getElementById('location-btn');
   const inputDetails   = document.getElementById('cust-details');
@@ -1053,19 +1080,19 @@ if (pedidoForm) {
     const domicileSelected = deliveryRadios.some(r => r.checked && r.value === 'Domicilio');
     inputAddress.disabled = !domicileSelected;
     if (!domicileSelected) inputAddress.value = '';
+    if (addressRow) addressRow.classList.toggle('form-row--visible', domicileSelected);
   }
 
   function validateFormInputs() {
     const nameOk     = inputName  && inputName.value.trim().length > 0;
     const phoneOk    = inputPhone && inputPhone.value.trim().length > 0;
-    const pinOk      = inputPin   && String(inputPin.value).trim().length === 4;
     const deliveryOk = deliveryRadios.some(r => r.checked);
     const domicileSelected = deliveryRadios.some(r => r.checked && r.value === 'Domicilio');
     const addressOk  = !domicileSelected || (inputAddress && inputAddress.value.trim().length > 0);
-    setSubmitState(nameOk && phoneOk && pinOk && deliveryOk && addressOk);
+    setSubmitState(nameOk && phoneOk && deliveryOk && addressOk);
   }
 
-  [inputName, inputPhone, inputPin, inputAddress].forEach(el => {
+  [inputName, inputPhone, inputAddress].forEach(el => {
     if (!el) return;
     el.addEventListener('input', validateFormInputs);
     el.addEventListener('change', validateFormInputs);
@@ -1082,19 +1109,19 @@ if (pedidoForm) {
     e.preventDefault();
     if (submitBtn && submitBtn.disabled) return;
 
-    openConfirmModal(async () => {
+    (async () => {
       /* Recopilar datos del formulario */
       const nombre    = inputName  ? inputName.value.trim()  : '';
       const telefono  = inputPhone ? inputPhone.value.trim() : '';
-      const pin       = inputPin   ? inputPin.value.trim()   : '';
       const entrega   = deliveryRadios.find(r => r.checked)?.value || '';
       const direccion = (entrega === 'Domicilio' && inputAddress) ? inputAddress.value.trim() : '';
       const ubicacion = inputLocation ? inputLocation.value.trim() : '';
       const detalles  = inputDetails  ? inputDetails.value.trim()  : '';
       /* Normalizar saltos de línea del textarea (evita \r\n en Windows) */
       const productos = formItems    ? formItems.value.replace(/\r\n|\r/g, '\n') : '';
-      const total     = formTotal    ? formTotal.value    : '';
       const datetime  = formDatetime ? formDatetime.value : '';
+      /* Totales por moneda, calculados sobre el carrito antes de vaciarlo */
+      const { totals } = buildOrderSummary(cart);
 
       /* Construir texto del mensaje */
       const lineas = [
@@ -1102,7 +1129,6 @@ if (pedidoForm) {
         '',
         `\u{1F464} Nombre: ${nombre}`,
         `\u{1F4F1} Teléfono: ${telefono}`,
-        `\u{1F511} PIN: ${pin}`,
         `\u{1F69A} Entrega: ${entrega}`,
       ];
       if (direccion) lineas.push(`\u{1F3E0} Dirección: ${direccion}`);
@@ -1115,7 +1141,11 @@ if (pedidoForm) {
         lineas.push(`\u{1F4DD} Detalles: ${detalles}`);
       }
       lineas.push('');
-      lineas.push(`\u{1F4B0} *Total: ${total}*`);
+      if (totals.length) {
+        totals.forEach(t => lineas.push(`\u{1F4B0} *Total ${t.currency}: ${formatCurrency(t.total)}*`));
+      } else {
+        lineas.push(`\u{1F4B0} *Total: ${formatCurrency(0)}*`);
+      }
       lineas.push(`\u{1F4C5} ${datetime}`);
 
       /* Unir con salto de línea y codificar para URL */
@@ -1183,7 +1213,7 @@ if (pedidoForm) {
           submitBtn.textContent = originalBtnText;
         }
       }
-    });
+    })();
   });
 }
 

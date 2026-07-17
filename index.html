@@ -40,10 +40,7 @@
       <ul id="cart-items-list" class="cart-items-list"></ul>
     </div>
     <footer class="cart-footer">
-      <div class="cart-total-row">
-        <span>Total</span>
-        <strong id="cart-total">$ 0.00</strong>
-      </div>
+      <div id="cart-totals" class="cart-totals-list"></div>
       <div class="cart-footer-actions">
         <button id="cart-close-btn" class="btn">Cerrar</button>
         <button id="order-btn" class="btn btn-primary">Crear pedido</button>
@@ -178,26 +175,9 @@
             <input type="text" name="Nombre" id="cust-name" autocomplete="name" placeholder="Introduzca su nombre" required />
           </div>
 
-          <div class="form-inline-row">
-            <div class="form-row">
-              <label for="cust-phone">Teléfono</label>
-              <input type="tel" name="Telefono" id="cust-phone" autocomplete="tel" placeholder="Introduzca su número de teléfono" required />
-            </div>
-            <div class="form-row">
-              <label for="cust-pin">PIN</label>
-              <input
-                type="number"
-                name="PIN"
-                id="cust-pin"
-                inputmode="numeric"
-                pattern="\d{1,4}"
-                min="0"
-                max="9999"
-                required
-                placeholder="Debe tener 4 dígitos"
-                oninput="this.value = this.value.replace(/[^0-9]/g,'').slice(0,4);"
-              />
-            </div>
+          <div class="form-row">
+            <label for="cust-phone">Teléfono</label>
+            <input type="tel" name="Telefono" id="cust-phone" autocomplete="tel" placeholder="Introduzca su número de teléfono" required />
           </div>
 
           <div class="form-row">
@@ -212,7 +192,7 @@
             </div>
           </div>
 
-          <div class="form-row">
+          <div class="form-row" id="address-row">
             <label for="cust-address">Dirección (toque el botón para incluir su ubicación)</label>
             <div class="location-input-row">
               <input type="text" name="Direccion" id="cust-address" autocomplete="street-address" placeholder="Por favor, especifique bien su dirección" disabled />
@@ -236,7 +216,7 @@
               <label for="form-total">Total a pagar</label>
               <input type="text" name="Total a pagar" id="form-total" readonly />
             </div>
-            <div class="form-row">
+            <div class="form-row form-row--wide">
               <label for="form-datetime">Fecha y hora</label>
               <input
                 type="text"
@@ -255,20 +235,6 @@
           </footer>
         </form>
       </div>
-    </div>
-  </div>
-
-  <!-- Modal de confirmación de envío -->
-  <div id="confirm-modal" class="modal-hidden" aria-hidden="true">
-    <div class="modal-card confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-      <div class="confirm-body">
-        <p class="confirm-message">‼️AVISO IMPORTANTE‼️<br><br>Antes de hacer su pedido, por favor, es importante que lea la información del menú superior izquierdo si aún no lo ha hecho.</p>
-        <p class="confirm-question">¿Desea continuar?</p>
-      </div>
-      <footer class="modal-footer">
-        <button id="confirm-yes" class="btn btn-primary" disabled>Sí (5)</button>
-        <button id="confirm-no" class="btn">No</button>
-      </footer>
     </div>
   </div>
 

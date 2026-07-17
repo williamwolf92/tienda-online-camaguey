@@ -455,6 +455,17 @@ body.info-open #info-sidebar {
   font-weight: 600;
 }
 
+.cart-currency-header {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  padding: 6px 2px 2px;
+}
+.cart-currency-header:first-child {
+  padding-top: 0;
+}
+
 #cart-close-btn {
   border: 1px solid var(--accent);
 }
@@ -494,11 +505,16 @@ body.info-open #info-sidebar {
   border-top: 1px solid var(--border);
   background: var(--card);
 }
+.cart-totals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
 .cart-total-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
   font-weight: 700;
 }
 .cart-total-row strong {
@@ -1063,7 +1079,10 @@ body.info-open #info-sidebar {
   flex: 1;
 }
 .form-row--narrow {
-  width: 30px;
+  width: 55%;
+}
+.form-row--wide {
+  width: 45%;
 }
 
 .form-row label {
@@ -1097,6 +1116,13 @@ body.info-open #info-sidebar {
 .form-inline-row {
   display: flex;
   gap: 8px;
+}
+
+#address-row {
+  display: none;
+}
+#address-row.form-row--visible {
+  display: flex;
 }
 
 .location-input-row {
@@ -1160,47 +1186,6 @@ body.info-open #info-sidebar {
 .radio-label input[type="radio"] {
   margin-bottom: 4px;
   accent-color: var(--accent);
-}
-
-/* ── Confirm modal (no backdrop) ────────────────────────────────────*/
-#confirm-modal {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 110;
-  pointer-events: none;
-}
-#confirm-modal:not(.modal-hidden) {
-  pointer-events: auto;
-}
-.confirm-card {
-  width: min(360px, 92%);
-  text-align: center;
-  gap: 10px;
-}
-.confirm-body {
-  padding: 8px 4px 4px;
-}
-.confirm-message {
-  margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.confirm-question {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--accent-dark);
-}
-#confirm-modal .modal-footer {
-  justify-content: center;
-  gap: 12px;
-  border-top: none;
-  padding-top: 4px;
 }
 
 /* ── Toast ────────────────────────────────────────────────────────── */
